@@ -11,7 +11,7 @@ export type IntentResult =
 // Pre-flight before any money moves: every domain in the order must belong to
 // the paying organization. A domain the org does not own is refused as 409.
 export async function computeMailboxIntent(req: IntentRequest): Promise<IntentResult> {
-  const owned = new Set((await listDomains({ organizationId: req.organization_id })).map((d) => d.name));
+  const owned = new Set((await listDomains({ organizationId: req.organization_id, limit: 500 })).map((d) => d.name));
   for (const domain of req.domains) {
     if (!owned.has(domain)) return { ok: false, code: "not_owned", domain };
   }
