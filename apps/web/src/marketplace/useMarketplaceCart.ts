@@ -25,9 +25,13 @@ export function useMarketplaceCart(orgId: string) {
 
   useEffect(() => { setState(read(orgId)); }, [orgId]);
 
-  const persist = useCallback((next: CartState) => {
-    setState(next);
-    try { localStorage.setItem(keyFor(orgId), JSON.stringify(next)); } catch { /* storage unavailable */ }
+  const setAndPersist = useCallback((updater: (prev: CartState) => CartState) => {
+    setState((prev) => {
+      const next = updater(prev);
+      if (next === prev) return prev;
+      try { localStorage.setItem(keyFor(orgId), JSON.stringify(next)); } catch { /* storage unavailable */ }
+      return next;
+    });
   }, [orgId]);
 
   const getCartDomains = useCallback(
@@ -36,21 +40,25 @@ export function useMarketplaceCart(orgId: string) {
   );
 
   const addDomain = useCallback((name: string, meta?: Omit<CartDomain, "kind" | "name">) => {
-    if (state.items.some((i) => i.kind === "domain" && i.name === name)) return;
-    const domain: CartDomain = meta ? { kind: "domain", name, ...meta } : { kind: "domain", name };
-    persist({ items: [...state.items, domain] });
-  }, [state.items, persist]);
+    setAndPersist((state) => {
+      if (state.items.some((i) => i.kind === "domain" && i.name === name)) return state;
+      const domain: CartDomain = meta ? { kind: "domain", name, ...meta } : { kind: "domain", name };
+      return { items: [...state.items, domain] };
+    });
+  }, [setAndPersist]);
 
   const removeDomain = useCallback((name: string) => {
-    persist({ items: state.items.filter((i) => !(i.kind === "domain" && i.name === name)) });
-  }, [state.items, persist]);
+    setAndPersist((state) => ({ items: state.items.filter((i) => !(i.kind === "domain" && i.name === name)) }));
+  }, [setAndPersist]);
 
   const addMailbox = useCallback((item: Omit<CartMailbox, "kind">) => {
-    if (state.items.some((i) => i.kind === "mailbox" && i.username === item.username && i.domain === item.domain)) return;
-    persist({ items: [...state.items, { kind: "mailbox", ...item }] });
-  }, [state.items, persist]);
+    setAndPersist((state) => {
+      if (state.items.some((i) => i.kind === "mailbox" && i.username === item.username && i.domain === item.domain)) return state;
+      return { items: [...state.items, { kind: "mailbox", ...item }] };
+    });
+  }, [setAndPersist]);
 
-  const clear = useCallback(() => persist(empty), [persist]);
+  const clear = useCallback(() => setAndPersist(() => empty), [setAndPersist]);
 
   const total = state.items.reduce((sum, i) => sum + (i.kind === "domain" ? (i.price ?? 0) : 4.99), 0);
 

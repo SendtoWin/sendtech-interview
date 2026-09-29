@@ -19,4 +19,14 @@ describe("useMarketplaceCart", () => {
     const second = renderHook(() => useMarketplaceCart("org"));
     expect(second.result.current.getCartDomains()).toHaveLength(1);
   });
+
+  it("adds multiple domains without intermediate renders", () => {
+    const { result } = renderHook(() => useMarketplaceCart("org"));
+    act(() => {
+      result.current.addDomain("a.com");
+      result.current.addDomain("b.com");
+      result.current.addDomain("c.com");
+    });
+    expect(result.current.getCartDomains()).toHaveLength(3);
+  });
 });
